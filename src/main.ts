@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { MyLogger } from './lib/logger';
+import { TransformInterceptor } from './transform.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,6 +17,7 @@ async function bootstrap() {
   // 验证管道
 
   // 响应参数统一格式
+  app.useGlobalInterceptors(new TransformInterceptor());
 
   // 异常处理
 
@@ -24,6 +26,7 @@ async function bootstrap() {
     .setTitle('CDD-Server')
     .setDescription('cdd')
     .addBearerAuth()
+    .addServer('/api')
     .build();
   const document = SwaggerModule.createDocument(app, documentBuilder, {
     ignoreGlobalPrefix: true,
