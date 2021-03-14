@@ -1,10 +1,15 @@
-import { Controller } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
+import { ContentDTO } from './cdd.dto';
 
 @Controller('cdd')
 export class CddController {
   /**
    * 上传图片信息
    */
+  @Post('/createPhotos')
+  createPhotos(@Body() contents: ContentDTO[]) {
+    console.log(contents);
+  }
   /**
    * 删除图片信息
    */

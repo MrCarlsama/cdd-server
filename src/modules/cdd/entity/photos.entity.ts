@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Artists } from './artists.entity';
+import { Nicknames } from './nicknames.entity';
 
 // 来源
 enum SourcePlatform {

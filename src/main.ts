@@ -7,6 +7,9 @@ import { TransformInterceptor } from './transform.interceptor';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // 处理跨域
+  app.enableCors();
+
   // 日志
   const logger = new MyLogger(process.env.LOG_PATH);
   app.useLogger(logger);
