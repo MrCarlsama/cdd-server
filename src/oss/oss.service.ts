@@ -14,27 +14,33 @@ export class OssService {
   }
   private client: OSS;
 
+  async createOss(pathUrl: string, url: string) {
+    const resStream = await this.getImageStream(url);
+    const resultUrl = await this.uploadOssStream(pathUrl, resStream);
+    return resultUrl;
+  }
+
   async getImageStream(url: string) {
-    const response = await this.httpSerivce.request<Stream>({
-      url,
-      method: 'get',
-      responseType: 'stream',
-    });
-    console.log(response);
+    const response = await this.httpSerivce
+      .request<Stream>({
+        url,
+        method: 'get',
+        responseType: 'stream',
+      })
+      .toPromise()
+      .then(res => res.data);
+
     return response;
   }
 
-  async uploadOssStream(pathUrl: string, stream: Stream) {
+  async uploadOssStream(pathUrl, stream) {
     try {
       const result = await this.client.putStream(pathUrl, stream);
-      // 公告读
+      // 公共读
       await this.client.putACL(pathUrl, 'public-read');
 
-      console.log(result);
-
-      return pathUrl;
+      return result.name;
     } catch (e) {
-      console.log(e);
       return this.uploadOssStream(pathUrl, stream);
     }
   }

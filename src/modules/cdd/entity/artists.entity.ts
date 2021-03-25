@@ -30,11 +30,13 @@ export class Artists {
 
   @Column({
     comment: '名字 日文',
+    default: '',
   })
   nameJA: string;
 
   @Column({
     comment: '封面url',
+    default: '',
   })
   coverUrl: string;
 
@@ -63,11 +65,13 @@ export class Artists {
 
   @Column({
     comment: '启禁用状态',
+    default: true,
   })
   status: boolean;
 
   @Column({
     comment: '审核状态',
+    default: false,
   })
   isAudit: boolean;
 

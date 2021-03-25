@@ -2,7 +2,6 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinTable,
   ManyToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -11,7 +10,7 @@ import { Artists } from './artists.entity';
 import { Nicknames } from './nicknames.entity';
 
 // 来源
-enum SourcePlatform {
+export enum SourcePlatform {
   upload = 1,
   weibo,
   twitter,
@@ -40,6 +39,7 @@ export class Photos {
     type: 'enum',
     enum: SourcePlatform,
     comment: '源数据 平台',
+    default: 99,
   })
   sourcePlatform: SourcePlatform;
 
@@ -50,11 +50,13 @@ export class Photos {
 
   @Column({
     comment: '启禁用状态',
+    default: true,
   })
   status: boolean;
 
   @Column({
     comment: '审核状态',
+    default: false,
   })
   isAudit: boolean;
 

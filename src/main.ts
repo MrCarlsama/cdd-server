@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './http-exception.filter';
 import { MyLogger } from './lib/logger';
 import { TransformInterceptor } from './transform.interceptor';
 
@@ -22,7 +23,8 @@ async function bootstrap() {
   // 响应参数统一格式
   app.useGlobalInterceptors(new TransformInterceptor());
 
-  // 异常处理
+  // 报错过滤器
+  app.useGlobalFilters(new HttpExceptionFilter(logger));
 
   // swagger 接口文档
   const documentBuilder = new DocumentBuilder()

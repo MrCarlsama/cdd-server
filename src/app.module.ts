@@ -23,9 +23,10 @@ import { ConfigModule } from '@nestjs/config';
       synchronize: true,
       charset: 'utf8mb4',
     }),
+    OssModule,
+
     CddModule,
     TaskModule,
-    OssModule,
   ],
   controllers: [AppController],
   providers: [AppService],
