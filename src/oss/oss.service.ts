@@ -21,19 +21,23 @@ export class OssService {
   }
 
   async getImageStream(url: string) {
-    const response = await this.httpSerivce
-      .request<Stream>({
-        url,
-        method: 'get',
-        responseType: 'stream',
-      })
-      .toPromise()
-      .then(res => res.data);
+    try {
+      const response = await this.httpSerivce
+        .request<Stream>({
+          url,
+          method: 'get',
+          responseType: 'stream',
+        })
+        .toPromise()
+        .then(res => res.data);
 
-    return response;
+      return response;
+    } catch (e) {
+      return await this.getImageStream(url);
+    }
   }
 
-  async uploadOssStream(pathUrl, stream) {
+  async uploadOssStream(pathUrl, stream): Promise<string> {
     try {
       const result = await this.client.putStream(pathUrl, stream);
       // 公共读
@@ -51,11 +55,9 @@ export class OssService {
   ): Promise<boolean> {
     try {
       await this.client.head(pathUrl, options);
-      // console.log(`${name}, 文件存在`);
       return true;
     } catch (error) {
       if (error.code === 'NoSuchKey') {
-        console.log(`${name}, 文件不存在`);
         return false;
       }
     }

@@ -28,6 +28,11 @@ export class Photos {
   })
   url: string;
 
+  @Column({
+    comment: '描述',
+  })
+  description: string;
+
   // 所属艺人
   @ManyToMany(
     type => Artists,

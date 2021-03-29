@@ -77,11 +77,13 @@ export class Artists {
 
   @UpdateDateColumn({
     comment: '更新时间',
+    type: 'timestamp',
   })
   updateDate: Date;
 
   @CreateDateColumn({
     comment: '创建时间',
+    type: 'timestamp',
   })
   createDate: Date;
 }

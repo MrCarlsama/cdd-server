@@ -30,17 +30,19 @@ export class Nicknames {
   status: boolean;
 
   @UpdateDateColumn({
+    type: 'timestamp',
     comment: '更新时间',
   })
   updateDate: Date;
 
   @CreateDateColumn({
     comment: '创建时间',
+    type: 'timestamp',
   })
   createDate: Date;
 
   @Column({
-    type: 'date',
+    type: 'timestamp',
     comment: '发布时间',
   })
   issueDate: Date;

@@ -4,15 +4,15 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
-  Put,
   Query,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ArtistsService } from './artists.service';
-import { ArtistsDTO, ContentDTO } from './cdd.dto';
+import { ArtistsDTO, ContentDTO, UrlsDTO } from './cdd.dto';
 import { PhotosService } from './photos.service';
 import { Artists } from './entity/artists.entity';
 
@@ -24,16 +24,12 @@ export class CddController {
     private readonly photosService: PhotosService,
   ) {}
 
-  // @Post('/createPhotos')
-  // createPhotos(@Body() contents: ContentDTO[]) {
-  //   console.log(contents);
-  // }
   /**
    * 新增图片信息
    */
   @Post('/photos')
-  createPhotos(@Body() photos: ContentDTO) {
-    return this.photosService.createPhotos(photos);
+  createPhotos(@Body() { data }: { data: ContentDTO }) {
+    return this.photosService.createPhotos(data);
   }
   /**
    * 删除图片信息
@@ -43,13 +39,30 @@ export class CddController {
   /**
    * 更新图片信息
    */
-  @Put('/photos/:id')
+  @Patch('/photos/:id')
   updatePhotos(@Param('id') id) {}
   /**
    * 获取所有图片集合
    */
-  @Get('/photos/:id')
-  getPhotos(@Param('id') id) {}
+  @Get('/photos')
+  getPhotos(@Query() query) {
+    console.log(query);
+    return this.photosService.getPhotos(query);
+  }
+
+  /**
+   * 批量审核图片
+   */
+  @Post('/photos/audit')
+  auditPhotos(@Body() data) {
+    return this.photosService.auditPhotos(data);
+  }
+
+  @Post('/photos/urls')
+  getPhotosByCreeper(@Body() data: UrlsDTO) {
+    console.log(data);
+    return this.photosService.getPhotosByCreeper(data);
+  }
 
   /**
    * 添加艺人信息
@@ -72,7 +85,7 @@ export class CddController {
   /**
    * 修改艺人信息
    */
-  @Put('/artists/id')
+  @Patch('/artists/:id')
   updateArtists(@Param('id') id, @Body() artists: Artists) {
     return this.artistsService.updateArtists(id, artists);
   }
@@ -80,13 +93,22 @@ export class CddController {
    * 获取所有艺人集合
    */
   @Get('/artists')
-  getArtist(@Query() query) {
+  getArtists(@Query() query) {
     return this.artistsService.getArtists(query);
   }
   @Get('/artists/:id')
-  getArtists(@Param('id') id) {
+  getArtist(@Param('id') id) {
     return this.artistsService.getArtistById(id);
   }
+
+  /**
+   * 初始化声优表
+   */
+  @Post('/artists/init')
+  initializeArtists() {
+    return this.artistsService.initializeArtists();
+  }
+
   /**
    * 新增昵称
    */
@@ -100,7 +122,7 @@ export class CddController {
   /**
    * 修改昵称
    */
-  @Put('/nicknames/:id')
+  @Patch('/nicknames/:id')
   updateNicknames(@Param('id') id) {}
   /**
    * 获取所有昵称集合

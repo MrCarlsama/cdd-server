@@ -14,6 +14,13 @@ export class ContentDTO {
   readonly isAudit: false;
   @ApiProperty()
   readonly issueDate: Date;
+  @ApiProperty()
+  readonly description: string;
+}
+
+export class UrlsDTO {
+  @ApiProperty()
+  readonly urls: string[];
 }
 export class ArtistsDTO {
   @ApiProperty()
