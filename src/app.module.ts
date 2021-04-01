@@ -1,3 +1,4 @@
+import { UsersModule } from './modules/users/users.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
@@ -6,6 +7,7 @@ import { CddModule } from './modules/cdd/cdd.module';
 import { TaskModule } from './modules/task/task.module';
 import { OssModule } from './oss/oss.module';
 import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { ConfigModule } from '@nestjs/config';
 
     CddModule,
     TaskModule,
+    AuthModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

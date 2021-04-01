@@ -31,6 +31,10 @@ export class HttpExceptionFilter<T> implements ExceptionFilter {
       const res = exception.getResponse();
       code = exception.getStatus();
       error = exception.message;
+
+      if (code === 401) {
+        error = '权限不足或过期';
+      }
     } else {
       logger.error(errorLog, '服务运行错误');
     }

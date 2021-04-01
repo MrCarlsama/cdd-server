@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Photos } from './entity/photos.entity';
 import * as fs from 'fs';
+import * as archiver from 'archiver';
 import { OssService } from 'src/oss/oss.service';
 import { ArtistsService } from './artists.service';
 import { ContentDTO, UrlsDTO } from './cdd.dto';
@@ -32,101 +33,76 @@ export class PhotosService {
    * 创建图片
    */
   async createPhotos(data: ContentDTO) {
-    const names = this.getNamesByNickname(data.nicknames);
-    const artists = await this.getArtistsByNames(names);
+    console.log(data);
+    const photo = await this.getPhotoRepo(data);
 
-    const isFlag =
-      data.nicknames.length === artists.length && artists.length > 0;
-    // 存在 加入联 且符合
-    if (isFlag) {
-      return this.createPhotosByPick(data, artists);
-    } else {
-      return this.createPhoto(data);
-    }
-  }
-
-  async createPhoto(data: ContentDTO) {
-    const lastName = data.sourceUrl.split('/');
-
-    const ossPathUrl = `/shiranaiyo/${lastName[lastName.length - 1]}`;
-
-    const isHasOss = await this.ossService.isExistObject(ossPathUrl);
-
-    if (isHasOss) {
-      throw new HttpException('该图片已经存在oss：' + ossPathUrl, 422);
+    if (photo.url !== '') {
+      return photo;
     }
 
-    // 转OSS
-    const url = await this.ossService.createOss(ossPathUrl, data.sourceUrl);
-    return this.createPhotosBySingle(data, {
-      artists: [],
-      url,
-    });
+    const photoJoinArtists = await this.getPhotoJoinArtists(photo, data);
+
+    const photoOssUrl = await this.getPhotoOssUrl(photo);
+
+    photo.url = photoOssUrl;
+    photo.artists = photoJoinArtists;
+
+    return await this.photosRepository.save(photo);
   }
 
   /**
-   * 多声优图分配
+   * 获取基础实体
    */
-  async createPhotosByPick(data: ContentDTO, artists: Artists[]) {
-    const results: Photos[] = [];
-    const lastFilesType = data.sourceUrl.slice(
-      data.sourceUrl.lastIndexOf('.') + 1,
-    );
-
-    // 每个声优 分配一张图片
-    for (let i = 0; i < artists.length; i++) {
-      // const ossPathName = await this.getPathName(i, data);
-
-      const photo = await this.createPhotosBySingle(data, {
-        artists,
-        url: '',
-      });
-
-      const currentId = photo.id;
-
-      const ossPathName = `/${artists[i].nameRoma}/${currentId}.${lastFilesType}`;
-
-      const isHasOss = await this.ossService.isExistObject(ossPathName);
-
-      if (isHasOss) {
-        this.deletePhoto(currentId);
-
-        throw new HttpException('该图片已经存在oss：' + ossPathName, 422);
-      }
-
-      // 转OSS
-      const url = await this.ossService.createOss(
-        `${ossPathName}`,
-        data.sourceUrl,
-      );
-
-      const result = await this.updatePhoto(currentId, { url, isAudit: true });
-
-      results.push(photo);
+  async getPhotoRepo(data: ContentDTO) {
+    const hasPhoto = await this.photosRepository.findOne({
+      where: [{ sourceUrl: data.sourceUrl }],
+    });
+    if (hasPhoto) {
+      // throw new HttpException('存在相同的原始图片', 422);
+      return hasPhoto;
     }
 
-    return results;
-  }
-
-  async createPhotosBySingle(
-    data: ContentDTO,
-    {
-      artists,
-      url,
-    }: {
-      artists: Artists[];
-      url: string;
-    },
-  ) {
     // 加入数据库
     const photo = new Photos();
-    photo.url = url;
-    photo.artists = artists;
     photo.description = data.description;
+    photo.url = '';
     photo.sourceUrl = data.sourceUrl;
     photo.sourcePlatform = data.sourcePlatform;
     photo.issueDate = new Date(data.issueDate);
-    return await this.photosRepository.save(photo);
+    return this.photosRepository.save(photo);
+  }
+
+  /**
+   * 获取OSS地址
+   */
+  async getPhotoOssUrl(photo: Photos) {
+    const currentId = photo.id;
+    const lastFilesType = photo.sourceUrl.slice(
+      photo.sourceUrl.lastIndexOf('.') + 1,
+    );
+    const ossPathName = `/${currentId}.${lastFilesType}`;
+
+    const isHasOss = await this.ossService.isExistObject(ossPathName);
+
+    if (isHasOss) {
+      this.deletePhoto(currentId);
+      throw new HttpException('该图片已经存在oss：' + ossPathName, 422);
+    }
+
+    // 转OSS
+    const url = await this.ossService.createOss(ossPathName, photo.sourceUrl);
+
+    return url;
+  }
+
+  /**
+   * 获取关联声优
+   */
+  async getPhotoJoinArtists(photo: Photos, data: ContentDTO) {
+    const names = this.getNamesByNickname(data.nicknames);
+    const artists = await this.getArtistsByNames(names);
+
+    return artists;
   }
 
   /**
@@ -142,14 +118,15 @@ export class PhotosService {
       photo.artists = artists;
 
       const result = await this.photosRepository.save(photo);
-
-      console.log(result);
     }
+
+    return '审核成功';
   }
 
   /**
    * 删除图片
    */
+
   async deletePhoto(id) {
     try {
       await this.photosRepository.delete(id);
@@ -264,7 +241,7 @@ export class PhotosService {
     }
   }
 
-  async getArtistsByNames(names) {
+  async getArtistsByNames(names: string[]) {
     const artists: Artists[] = [];
     for (const name of names) {
       const artist = await this.getArtist(name);
@@ -279,7 +256,10 @@ export class PhotosService {
 
   getNamesByNickname(keys) {
     try {
-      return keys.map(key => this.getName(key)).filter(key => key !== '');
+      return keys
+        .map(key => this.getName(key))
+        .flat()
+        .filter(key => key !== '');
     } catch (e) {
       console.log(e);
       console.log(keys);
@@ -296,7 +276,15 @@ export class PhotosService {
 
     let name = '';
 
-    if (this.artistsNicknameTranslate[key]) {
+    // 如果是,分割的数据
+    const namesArray = (this.artistsNicknameTranslate[key] || '')
+      .split(',')
+      .filter(key => key.trim() !== '');
+    const isNamesArray = namesArray.length > 1;
+
+    if (isNamesArray) {
+      name = this.getNamesByNickname(namesArray);
+    } else if (this.artistsNicknameTranslate[key]) {
       name = this.artistsNicknameTranslate[key];
     } else {
       this.artistsNicknameTranslate[key] = '';
@@ -326,8 +314,8 @@ export class PhotosService {
       fs.readFileSync('./json/artists.simplified.json', 'utf-8'),
     );
     for (const key in oldJson) {
-      const value = oldJson[key];
-      if (!newJson[value] && value) {
+      const value: string = oldJson[key];
+      if (!newJson[value] && value && !value.includes(',')) {
         newJson[value] = '';
         fs.writeFileSync(
           './json/artists.simplified.json',
@@ -335,5 +323,48 @@ export class PhotosService {
         );
       }
     }
+  }
+
+  /**
+   * 导出图片
+   */
+  async exportPhotos({ artistIds }: { artistIds: number[] }) {
+    const params = {
+      limit: 0,
+      skip: 0,
+      options: { artistIds, isAudit: true },
+    };
+
+    const photos = await this.getPhotos(params);
+
+    const zip = await this.createPhotosZipStream(photos);
+
+    const url = await this.ossService.uploadOssStream(
+      `/zip/[DD大礼包]${new Date().toISOString()}.zip`,
+      zip,
+    );
+
+    return { url: process.env.OSS_BASE_URL + '/' + url };
+  }
+
+  async createPhotosZipStream(photos: Photos[]) {
+    const zipStream = fs.createWriteStream(
+      `./zip/[dd]${new Date().toISOString()}.zip`,
+    );
+
+    const zip = archiver('zip', { zlib: { level: 9 } });
+
+    zip.pipe(zipStream);
+
+    for (const photo of photos) {
+      const photoStream = await this.ossService.getImageStream(
+        process.env.OSS_BASE_URL + '/' + photo.url,
+      );
+      zip.append(photoStream, { name: photo.url });
+    }
+
+    zip.finalize();
+
+    return zip;
   }
 }

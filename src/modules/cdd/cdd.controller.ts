@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -15,7 +16,7 @@ import { ArtistsService } from './artists.service';
 import { ArtistsDTO, ContentDTO, UrlsDTO } from './cdd.dto';
 import { PhotosService } from './photos.service';
 import { Artists } from './entity/artists.entity';
-
+import { AuthGuard } from '@nestjs/passport';
 @ApiTags('CddModule')
 @Controller('cdd')
 export class CddController {
@@ -34,8 +35,11 @@ export class CddController {
   /**
    * 删除图片信息
    */
+  @UseGuards(AuthGuard('jwt'))
   @Delete('/photos/:id')
-  deletePhotos(@Param('id') id) {}
+  deletePhotos(@Param('id') id) {
+    return this.photosService.deletePhoto(id);
+  }
   /**
    * 更新图片信息
    */
@@ -46,27 +50,37 @@ export class CddController {
    */
   @Get('/photos')
   getPhotos(@Query() query) {
-    console.log(query);
     return this.photosService.getPhotos(query);
   }
 
   /**
    * 批量审核图片
    */
+  @UseGuards(AuthGuard('jwt'))
   @Post('/photos/audit')
   auditPhotos(@Body() data) {
     return this.photosService.auditPhotos(data);
   }
+  /**
+   * 导出图片
+   * @param data
+   * @returns
+   */
+  @Post('/photos/export')
+  exportPhotos(@Body() data) {
+    console.log(data);
+    return this.photosService.exportPhotos(data);
+  }
 
   @Post('/photos/urls')
   getPhotosByCreeper(@Body() data: UrlsDTO) {
-    console.log(data);
     return this.photosService.getPhotosByCreeper(data);
   }
 
   /**
    * 添加艺人信息
    */
+  @UseGuards(AuthGuard('jwt'))
   @Post('/artists')
   @ApiOperation({
     summary: '新增艺人信息',
@@ -78,6 +92,7 @@ export class CddController {
   /**
    * 删除艺人信息
    */
+  @UseGuards(AuthGuard('jwt'))
   @Delete('/artists/:id')
   deleteArtists(@Param('id') id) {
     return this.artistsService.deleteArtists(id);
@@ -85,6 +100,7 @@ export class CddController {
   /**
    * 修改艺人信息
    */
+  @UseGuards(AuthGuard('jwt'))
   @Patch('/artists/:id')
   updateArtists(@Param('id') id, @Body() artists: Artists) {
     return this.artistsService.updateArtists(id, artists);
@@ -104,6 +120,7 @@ export class CddController {
   /**
    * 初始化声优表
    */
+  @UseGuards(AuthGuard('jwt'))
   @Post('/artists/init')
   initializeArtists() {
     return this.artistsService.initializeArtists();
