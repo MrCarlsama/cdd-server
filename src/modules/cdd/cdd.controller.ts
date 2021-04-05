@@ -50,6 +50,7 @@ export class CddController {
    */
   @Get('/photos')
   getPhotos(@Query() query) {
+    console.log(process.env.NODE_ENV);
     return this.photosService.getPhotos(query);
   }
 
@@ -62,13 +63,29 @@ export class CddController {
     return this.photosService.auditPhotos(data);
   }
   /**
+   * 全局审核
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('/photos/allAudit')
+  auditAllPhotos() {
+    return this.photosService.auditAllPhotos();
+  }
+  /**
+   * 全局重新匹配
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('/photos/reMatch')
+  reMatchAllPhotos() {
+    return this.photosService.reMatchAllPhotos();
+  }
+
+  /**
    * 导出图片
    * @param data
    * @returns
    */
   @Post('/photos/export')
   exportPhotos(@Body() data) {
-    console.log(data);
     return this.photosService.exportPhotos(data);
   }
 
@@ -120,12 +137,46 @@ export class CddController {
   /**
    * 初始化声优表
    */
-  @UseGuards(AuthGuard('jwt'))
   @Post('/artists/init')
   initializeArtists() {
     return this.artistsService.initializeArtists();
   }
 
+  /**
+   * 获取对照表 - JSON
+   */
+  @Get('/artistsComparison')
+  getComparitionData(@Query() query) {
+    const param = {
+      empty: query.empty === 'true',
+      type: query.type,
+    };
+    return this.artistsService.getStaticComparisonArtists(param);
+  }
+  /**
+   * 更新对照表 - JSON
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('/artistsComparison')
+  updateStaticComparisonArtists(
+    @Body()
+    data: {
+      updateArray: { key: string; value: string }[];
+      deleteArray: { key: string }[];
+      type: 'name' | 'roma';
+    },
+  ) {
+    return this.artistsService.updateStaticComparisonArtists(data);
+  }
+  /**
+   * 全局重新匹配声优对照表数据
+   */
+  //  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'))
+  @Post('/artistsComparison/reMatch')
+  reMatchAllArtistsData() {
+    return this.artistsService.reMatchAllArtistsData();
+  }
   /**
    * 新增昵称
    */

@@ -59,6 +59,7 @@ export class ArtistsService {
     );
 
     return {
+      msg: `成功：${successArtist.length}条，失败：${failArtist.length}条，重复：${repeationArtist.length}条。`,
       successArtist,
       failArtist,
       repeationArtist,
@@ -134,5 +135,137 @@ export class ArtistsService {
 
   async getArtistByName(name) {
     return await this.artistsRepository.findOne({ name });
+  }
+
+  /**
+   * 获取静态JSON声优对照表
+   */
+  getStaticComparisonArtists({ empty, type }) {
+    let jsonPath = '';
+    switch (type) {
+      case 'name':
+        jsonPath = './json/artists.translate.json';
+        break;
+      case 'roma':
+        jsonPath = './json/artists.simplified.json';
+        break;
+    }
+    const isFilterNotEmpty = !!empty;
+
+    const comparisonArtists = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+
+    const comparisonArtistsArray = [];
+
+    for (const key in comparisonArtists) {
+      // 只获取空值 且 符合条件
+      if (isFilterNotEmpty && comparisonArtists[key].toString().trim() !== '')
+        continue;
+
+      const keyValue = {
+        key,
+        value: comparisonArtists[key],
+      };
+
+      comparisonArtistsArray.push(keyValue);
+    }
+
+    return comparisonArtistsArray;
+  }
+
+  /**
+   * 更新静态JSON声优对照表
+   */
+  updateStaticComparisonArtists({
+    updateArray,
+    deleteArray,
+    type,
+  }: {
+    updateArray: { key: string; value: string }[];
+    deleteArray: { key: string }[];
+    type: 'name' | 'roma';
+  }) {
+    let jsonPath = '';
+    switch (type) {
+      case 'name':
+        jsonPath = './json/artists.translate.json';
+        break;
+      case 'roma':
+        jsonPath = './json/artists.simplified.json';
+        break;
+    }
+    const comparisonData = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+
+    for (const keyVal of updateArray) {
+      comparisonData[keyVal.key] = keyVal.value;
+    }
+
+    for (const { key } of deleteArray) {
+      delete comparisonData[key];
+    }
+
+    fs.writeFileSync(jsonPath, JSON.stringify(comparisonData));
+
+    if (type === 'name') this.writeSimplifiedToRomaNameJSON();
+
+    return `更新完毕，删除${deleteArray.length}个，更新${updateArray.length}个。`;
+  }
+
+  /**
+   * 生成简体JSON
+   */
+  writeSimplifiedToRomaNameJSON() {
+    const oldJson = JSON.parse(
+      fs.readFileSync('./json/artists.translate.json', 'utf-8'),
+    );
+
+    const newJson = JSON.parse(
+      fs.readFileSync('./json/artists.simplified.json', 'utf-8'),
+    );
+    for (const key in oldJson) {
+      const value: string = oldJson[key];
+      if (!newJson[value] && value && !value.includes(',')) {
+        newJson[value] = '';
+        fs.writeFileSync(
+          './json/artists.simplified.json',
+          JSON.stringify(newJson),
+        );
+      }
+    }
+  }
+
+  /**
+   * 声优名字表 简体匹配简体JSON表
+   */
+  writeSimplifiedToNameJSON() {
+    const artistsJson = JSON.parse(
+      fs.readFileSync('./json/artists.translate.json', 'utf-8'),
+    );
+
+    for (const key in artistsJson) {
+      // 多名字组合跳过
+      if (artistsJson[key].includes(',')) continue;
+
+      // 已存在且有值的跳过
+      const newKey = artistsJson[key];
+      const isTrueHas =
+        artistsJson[newKey] !== undefined && artistsJson[newKey] !== '';
+
+      if (isTrueHas) continue;
+
+      if (newKey !== '') artistsJson[newKey] = newKey;
+    }
+
+    fs.writeFileSync(
+      './json/artists.translate.json',
+      JSON.stringify(artistsJson),
+    );
+  }
+
+  /**
+   * 全局重新匹配即声优对照表
+   */
+  reMatchAllArtistsData() {
+    this.writeSimplifiedToNameJSON();
+    this.writeSimplifiedToRomaNameJSON();
   }
 }

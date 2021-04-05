@@ -40,7 +40,7 @@ export class PhotosService {
       return photo;
     }
 
-    const photoJoinArtists = await this.getPhotoJoinArtists(photo, data);
+    const photoJoinArtists = await this.getPhotoJoinArtists(data.nicknames);
 
     const photoOssUrl = await this.getPhotoOssUrl(photo);
 
@@ -98,8 +98,8 @@ export class PhotosService {
   /**
    * 获取关联声优
    */
-  async getPhotoJoinArtists(photo: Photos, data: ContentDTO) {
-    const names = this.getNamesByNickname(data.nicknames);
+  async getPhotoJoinArtists(tags: string[]) {
+    const names = this.getNamesByNickname(tags);
     const artists = await this.getArtistsByNames(names);
 
     return artists;
@@ -121,6 +121,77 @@ export class PhotosService {
     }
 
     return '审核成功';
+  }
+
+  /**
+   * 全局审核 - 只审核只有匹配到一位的声优
+   */
+  async auditAllPhotos() {
+    const photos = await this.photosRepository
+      .createQueryBuilder('photos')
+      .leftJoinAndSelect('photos.artists', 'artists')
+      .where('photos.isAudit = :isAudit', {
+        isAudit: false,
+      })
+      .getMany();
+
+    let count = 0;
+    for (const photo of photos) {
+      if (photo.artists.length === 1) {
+        count++;
+        photo.isAudit = true;
+        await this.photosRepository.save(photo);
+      }
+    }
+
+    return {
+      msg: `全局审核成功，${count}条。`,
+    };
+  }
+
+  /**
+   * 全局重新匹配 - 微博源
+   */
+  async reMatchAllPhotos() {
+    const photos = await this.photosRepository
+      .createQueryBuilder('photos')
+      .leftJoinAndSelect('photos.artists', 'artists')
+      .getMany();
+
+    const resultStr = [];
+
+    for (const photo of photos) {
+      const tags = this.getTagsInString(photo.description);
+      const photoJoinArtists = await this.getPhotoJoinArtists(tags);
+
+      if (photoJoinArtists.length !== photo.artists.length)
+        resultStr.push(
+          `${photo.artists.map(artist => artist.name).join(',') ||
+            '无'} ==> ${photoJoinArtists
+            .map(photoJoinArtist => photoJoinArtist.name)
+            .join(',')}`,
+        );
+
+      photo.artists = photoJoinArtists;
+
+      await this.photosRepository.save(photo);
+    }
+
+    return {
+      msg: resultStr,
+      length: resultStr.length,
+    };
+  }
+
+  /**
+   * 匹配井号内内标签
+   */
+  getTagsInString(str: string): string[] {
+    const regByTags = /\#(.+?)\#/g;
+    const tagsStr = str.match(regByTags);
+    return tagsStr
+      ? tagsStr.map(tag => tag.slice(1, -1)) // 去井头去井尾
+      : [];
   }
 
   /**
@@ -146,6 +217,9 @@ export class PhotosService {
     }
   }
 
+  /**
+   * 获取所有图片
+   */
   async getPhotos(
     { limit, skip, options } = {
       limit: 50,
@@ -195,7 +269,7 @@ export class PhotosService {
       photoQueryBuilder = photoQueryBuilder.skip(skip);
     }
 
-    return await photoQueryBuilder.printSql().getMany();
+    return await photoQueryBuilder.getMany();
   }
 
   async getPhotosByCreeper({ urls }: UrlsDTO) {
