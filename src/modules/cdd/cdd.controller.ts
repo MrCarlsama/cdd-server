@@ -50,7 +50,6 @@ export class CddController {
    */
   @Get('/photos')
   getPhotos(@Query() query) {
-    console.log(process.env.NODE_ENV);
     return this.photosService.getPhotos(query);
   }
 
@@ -66,7 +65,7 @@ export class CddController {
    * 全局审核
    */
   @UseGuards(AuthGuard('jwt'))
-  @Post('/photos/allAudit')
+  @Post('/photos/auditGlobal')
   auditAllPhotos() {
     return this.photosService.auditAllPhotos();
   }

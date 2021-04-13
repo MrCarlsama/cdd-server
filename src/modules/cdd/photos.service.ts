@@ -8,6 +8,7 @@ import { OssService } from 'src/oss/oss.service';
 import { ArtistsService } from './artists.service';
 import { ContentDTO, UrlsDTO } from './cdd.dto';
 import { Artists } from './entity/artists.entity';
+import { join } from 'path';
 
 @Injectable()
 export class PhotosService {
@@ -174,8 +175,16 @@ export class PhotosService {
 
       photo.artists = photoJoinArtists;
 
-      await this.photosRepository.save(photo);
+      try {
+        await this.photosRepository.save(photo);
+      } catch (e) {
+        console.log(photo);
+        console.log(photoJoinArtists);
+        console.log(e);
+      }
     }
+
+    console.log(resultStr);
 
     return {
       msg: resultStr,
@@ -189,9 +198,10 @@ export class PhotosService {
   getTagsInString(str: string): string[] {
     const regByTags = /\#(.+?)\#/g;
     const tagsStr = str.match(regByTags);
-    return tagsStr
+    const newTagsStr = tagsStr
       ? tagsStr.map(tag => tag.slice(1, -1)) // 去井头去井尾
       : [];
+    return Array.from(new Set(newTagsStr));
   }
 
   /**
@@ -221,16 +231,16 @@ export class PhotosService {
    * 获取所有图片
    */
   async getPhotos(
-    { limit, skip, options } = {
-      limit: 50,
-      skip: 0,
+    { limit, page, options } = {
+      limit: 24,
+      page: 0,
       options: {
         artistIds: [],
         isAudit: null,
       },
     },
   ) {
-    const isNotNumber = isNaN(Number(limit || 0)) || isNaN(Number(skip || 0));
+    const isNotNumber = isNaN(Number(limit || 0)) || isNaN(Number(page || 0));
 
     if (isNotNumber) {
       throw new HttpException('分页数据类型不符合', 422);
@@ -249,9 +259,8 @@ export class PhotosService {
           ids,
         });
       }
-
       if (options?.isAudit !== null) {
-        const isAudit = options.isAudit === 'true';
+        const isAudit = options.isAudit === 'true' || options.isAudit;
         photoQueryBuilder = photoQueryBuilder.andWhere(
           'photos.isAudit = :isAudit',
           {
@@ -265,8 +274,8 @@ export class PhotosService {
       photoQueryBuilder = photoQueryBuilder.take(limit);
     }
 
-    if (skip) {
-      photoQueryBuilder = photoQueryBuilder.skip(skip);
+    if (page) {
+      photoQueryBuilder = photoQueryBuilder.skip(Number(page) * Number(limit));
     }
 
     return await photoQueryBuilder.getMany();
@@ -405,29 +414,31 @@ export class PhotosService {
   async exportPhotos({ artistIds }: { artistIds: number[] }) {
     const params = {
       limit: 0,
-      skip: 0,
+      page: 0,
       options: { artistIds, isAudit: true },
     };
 
     const photos = await this.getPhotos(params);
+    console.log(photos.length);
 
-    const zip = await this.createPhotosZipStream(photos);
+    const { zip } = await this.createPhotosZipStream(photos);
 
     const url = await this.ossService.uploadOssStream(
       `/zip/[DD大礼包]${new Date().toISOString()}.zip`,
       zip,
     );
 
-    return { url: process.env.OSS_BASE_URL + '/' + url };
+    return { url };
   }
 
   async createPhotosZipStream(photos: Photos[]) {
+    const pathName = `[dd]${new Date().toISOString()}.zip`;
+
     const zipStream = fs.createWriteStream(
-      `./zip/[dd]${new Date().toISOString()}.zip`,
+      join(__dirname, '../../../', `/public/zips/${pathName}`),
     );
 
     const zip = archiver('zip', { zlib: { level: 9 } });
-
     zip.pipe(zipStream);
 
     for (const photo of photos) {
@@ -436,9 +447,8 @@ export class PhotosService {
       );
       zip.append(photoStream, { name: photo.url });
     }
+    await zip.finalize();
 
-    zip.finalize();
-
-    return zip;
+    return { zip };
   }
 }

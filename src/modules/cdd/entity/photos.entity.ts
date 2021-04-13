@@ -68,16 +68,16 @@ export class Photos {
   @UpdateDateColumn({
     comment: '更新时间',
   })
-  updateDate: Date;
+  updateDate?: Date;
 
   @CreateDateColumn({
     comment: '创建时间',
   })
-  createDate: Date;
+  createDate?: Date;
 
   @Column({
     type: 'date',
     comment: '发布时间',
   })
-  issueDate: Date;
+  issueDate?: Date;
 }
