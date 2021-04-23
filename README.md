@@ -6,7 +6,7 @@
 
 数据库：Mysql
 
-试运行网址：daredemodaisuki.cn
+试运行网址：https://daredemodaisuki.cn
 
 ## Description
 
